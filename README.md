@@ -5,11 +5,16 @@ This Python script is designed for camera calibration using a chessboard pattern
 
 Included in this repository is the file [36in_x_48in_9col_12row_100mm_cv_poster.pdf](./36in_x_48in_9col_12row_100mm_cv_poster.pdf), which contains a chessboard pattern with a square size of 100mm sized to print on a 36" x 48" poster. It is recommended to turn this poster sideways for taking pictures with the camera you wish to calibrate.
 
+You may also generate a pattern of a different size using this webpage:
+https://calib.io/pages/camera-calibration-pattern-generator
+
+Set the Target Type to `Checkerboard` and adjust width, height rows, columns and checker width as needed to fit your print format. Use these new values with the script as described below.
+
 ![Picture taken by Mini3Pro of the chessboard pattern printed on poster paper](./DJI_0218.JPG)
 
-The number of calibration images you use and the way you take them are crucial for achieving accurate camera calibration. Here's some guidance:
-
 ## Taking Calibration Images
+
+The number of calibration images you use and the way you take them are crucial for achieving accurate camera calibration. Here's some guidance:
 
 ### Number of Calibration Images
 
