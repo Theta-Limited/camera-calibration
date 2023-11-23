@@ -119,7 +119,7 @@ The camera matrix, often denoted as `mtx` in the script, is a 3x3 matrix that co
 
 ### Distortion Coefficients
 
-The distortion coefficients (`dist` in the script) account for the radial and tangential lens distortion. This array typically has five components: (k1, k2, p1, p2, k3).
+The distortion coefficients (`dist` in the script) account for the radial and tangential lens distortion. This array typically has five components: (k_1, k_2, p_1, p_2, k_3).
 
 - **\( k_1, k_2, k_3 \)**: These are radial distortion coefficients. Radial distortion causes straight lines to appear curved. It's more pronounced at the edges of the image and is a function of the distance from the center of the image.
 - **\( p_1, p_2 \)**: These are tangential distortion coefficients. Tangential distortion occurs because the lens is not perfectly parallel to the image plane. It causes the image to appear tilted so that some areas in the image may look nearer than they are.
@@ -190,6 +190,8 @@ Distortion Coefficients
 To obtain the values `ccdWidthMMPerPixel` and `ccdHeightMMPerPixel` for droneModels.json, use the following formulas:
 
 ccdWidthMMPerPixel = focal_length / **\( f_x \)**
+
+
 ccdHeightMMPerPixel = focal_length / **\( f_y \)**
 
 Where `focal_length` is the focal length of the camera in millimeters, either as a known fixed value for the camera or obtainable from the tag Exif.Photo.FocalLength using this command:
