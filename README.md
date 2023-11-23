@@ -108,20 +108,18 @@ The script outputs the camera matrix and distortion coefficients to:
 
 The camera matrix, often denoted as `mtx` in the script, is a 3x3 matrix that contains intrinsic parameters of the camera. It looks something like this:
 
-\[
-\begin{bmatrix}
-f_x & 0   & c_x \\
-0   & f_y & c_y \\
-0   & 0   & 1
-\end{bmatrix}
-\]
+|     |     |     |
+| --- | --- | --- |
+| f_x |  0  | c_x |
+|  0  | f_y | c_y |
+|  0  |  0  |  1  |
 
 - **\( f_x, f_y \)**: These are the focal lengths of the camera expressed in pixel units. They represent the scaling of image coordinates in the x and y axes.
 - **\( c_x, c_y \)**: These are the coordinates of the principal point, which is the intersection of the optical axis with the image plane. It is often close to the image center.
 
 ### Distortion Coefficients
 
-The distortion coefficients (`dist` in the script) account for the radial and tangential lens distortion. This array typically has five components: \([k_1, k_2, p_1, p_2, k_3]\).
+The distortion coefficients (`dist` in the script) account for the radial and tangential lens distortion. This array typically has five components: (k1, k2, p1, p2, k3).
 
 - **\( k_1, k_2, k_3 \)**: These are radial distortion coefficients. Radial distortion causes straight lines to appear curved. It's more pronounced at the edges of the image and is a function of the distance from the center of the image.
 - **\( p_1, p_2 \)**: These are tangential distortion coefficients. Tangential distortion occurs because the lens is not perfectly parallel to the image plane. It causes the image to appear tilted so that some areas in the image may look nearer than they are.
