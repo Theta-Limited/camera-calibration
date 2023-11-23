@@ -1,0 +1,11 @@
+# .gitignore
+*.pyc
+*~
+\#*\#
+.\#*
+.DS_Store
+._.DS_Store
+**/.DS_Store
+**/._.DS_Store
+*.npz
+*.csv
