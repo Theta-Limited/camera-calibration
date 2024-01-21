@@ -1,7 +1,7 @@
 # Camera Calibration Script
 
 ## Overview
-This Python script is designed for camera calibration using a chessboard pattern. It computes the camera matrix and distortion coefficients, which are essential for correcting lens distortion and understanding the camera's intrinsic parameters.
+This Python script is designed for camera calibration using a chessboard pattern. It computes the camera matrix and distortion coefficients, which are essential for correcting lens distortion and understanding the camera's intrinsic parameters. The script then outputs the calibration data as an entry in [json](https://en.wikipedia.org/wiki/JSON) format suitable for inclusion in OpenAthena's [droneModels.json](https://github.com/Theta-Limited/DroneModels) calibration database.
 
 Included in this repository is the file [36in_x_48in_9col_12row_100mm_cv_poster.pdf](./36in_x_48in_9col_12row_100mm_cv_poster.pdf), which contains a chessboard pattern with a square size of 100mm sized to print on a 36" x 48" poster. It is recommended to turn this poster sideways for taking pictures with the camera you wish to calibrate.
 
@@ -39,11 +39,11 @@ The number of calibration images you use and the way you take them are crucial f
 4. **Avoid Reflections and Shadows**:
    - Ensure consistent lighting and avoid strong shadows or reflections on the chessboard, as these can interfere with corner detection.
 
-5. **Use High-Quality Images**:
-   - Use the highest resolution possible for your camera. Avoid blurry or low-resolution images.
+5. **Use the full sensor**:
+   - Most cameras crop pixels from top and bottom of their 4:3 image sensor to make it fit in widescreen 16:9. Set your drone camera to 4:3 to ensure you get full coverage of the image sensor
 
 6. **Ensure the Entire Chessboard is Visible**:
-   - The whole chessboard pattern should be in the frame for each image.
+   - All four corners of the pattern should be in the frame for each image.
 
 7. **Consistent Chessboard Orientation**:
    - While varying angles and distances, keep the orientation of the chessboard consistent (e.g., always keep the same corner or side of the chessboard in the same relative position).
@@ -51,13 +51,9 @@ The number of calibration images you use and the way you take them are crucial f
 8. **Use a Stable Chessboard Setup**:
    - The chessboard should be flat and rigid. Any bending or flexing can distort the pattern and affect accuracy.
 
-9. **Document Environmental Conditions**:
-   - If possible, note the environmental conditions like lighting, because changes in these conditions can affect the camera’s intrinsic parameters.
-
 ### Post-processing the Images
 
-- **Check for Clarity**: Before running the calibration, visually inspect the images to ensure that the chessboard corners are clear and distinguishable.
-- **Automated Corner Detection**: You might want to run a script to check if the corners are being correctly detected in all your images before proceeding to the full calibration.
+- **Check for Clarity**: Before running the calibration, visually inspect the images to ensure that the chessboard corners are clear and distinguishable. Delete images that don't meet these standards.
 
 ## Installation
 
@@ -65,6 +61,7 @@ The number of calibration images you use and the way you take them are crucial f
 - Python 3.x
 - numpy
 - opencv-python
+- Pillow
 
 Clone this project using git (or download as a zip file and extract it)
 ```
@@ -73,7 +70,7 @@ git clone https://github.com/Theta-Limited/camera-calibration.git
 
 Enter the project directory, then install the necessary libraries using:
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt # may be 'pip3' on some systems
 ```
 
 ## Usage
@@ -100,46 +97,12 @@ python3 camera-calibration.py --square_size 100 --num_rows 9 --num_cols 12
 
 ## Output
 The script outputs the camera matrix and distortion coefficients to:
-- Standard output (console).
-- A CSV file named `calibration_data.csv`.
-- A NumPy `.npz` file named `calibration_data.npz`.
+- Standard output as text in the terminal.
+- A file of the name makeMODEL.json, where the camera make and model name are obtained from image EXIF metadata
 
-## Interpreting and Using These Values
+Both are formatted as a json entry in the same format used in the [droneModels.json](https://github.com/Theta-Limited/DroneModels) database.
 
-- **Camera Calibration**: These parameters are used to understand the camera's internal characteristics, such as how it maps 3D points in the world onto the 2D image.
-- **Image Undistortion**: You can use these parameters to correct for lens distortion in images captured by this camera. OpenCV provides functions like `cv2.undistort` to straighten the images based on these parameters.
-
-### Camera Matrix
-
-The camera matrix, often denoted as `mtx` in the script, is a 3x3 matrix that contains intrinsic parameters of the camera. It looks something like this:
-
-|     |     |     |
-| --- | --- | --- |
-| f_x |  0  | c_x |
-|  0  | f_y | c_y |
-|  0  |  0  |  1  |
-
-- **\( f_x, f_y \)**: These are the focal lengths of the camera expressed in pixel units. They represent the scaling of image coordinates in the x and y axes.
-- **\( c_x, c_y \)**: These are the coordinates of the principal point, which is the intersection of the optical axis with the image plane. It is often close to the image center.
-
-### Distortion Coefficients
-
-The distortion coefficients (`dist` in the script) account for the radial and tangential lens distortion. This array typically has five components: (k_1, k_2, p_1, p_2, k_3).
-
-- **\( k_1, k_2, k_3 \)**: These are radial distortion coefficients. Radial distortion causes straight lines to appear curved. It's more pronounced at the edges of the image and is a function of the distance from the center of the image.
-- **\( p_1, p_2 \)**: These are tangential distortion coefficients. Tangential distortion occurs because the lens is not perfectly parallel to the image plane. It causes the image to appear tilted so that some areas in the image may look nearer than they are.
-
-### Conversion of these values to [droneModels.json](https://github.com/Theta-Limited/DroneModels) format
-
-#### Description of droneModels.json file format
-
-OpenAthena™ products store information on many drone cameras in a file droneModels.json, maintained here:
-
-
-[https://github.com/Theta-Limited/DroneModels](https://github.com/Theta-Limited/DroneModels)
-
-
-Here is an example of a JSONObject for a particular make/model of drone:
+E.g: here is what the ouptut json looks like for a DJI Mini 3 Pro:
 ```JSON
     {
       "makeModel": "djiFC3582",
@@ -158,58 +121,11 @@ Here is an example of a JSONObject for a particular make/model of drone:
     }
 ```
 
+## Contributing your calibration to OpenAthena
 
-In this object:
-* `makeModel` represents the EXIF make and model String merged together, a unique String representing a specific drone model. The EXIF make String is made all lowercase, while the EXIF model String is made all uppercase.
-* `focalLength` is an optional parameter which represents the distance between the focal point (the part of the lens that all light passes through) and the CCD/CMOS sensor which digitizes incoming light. This is only provided in rare cases when such data is unavailable in a camera model's image EXIF data.
-* `isThermal` represents whether this particular JSONObject represents the thermal or color camera of a given drone. This is used to solve name collisions in the `makeModel` String that occur when both the thermal and color cameras of a drone report the same model name despite having different parameters.
-* `ccdWidthMMPerPixel` represents the width of each pixel (in millimeters) of the drone camera's CCD/CMOS sensor which digitizes incoming light
-* `ccdHeightMMPerPixel` represents the height of each pixel (in millimeters) of the drone camera's CCD/CMOS sensor which digitizes incoming light
-* `widthPixels` represents the number of pixels in the width of a camera's uncropped, full resolution image
-* `heightPixels` represents the number of pixels in the height of a camera's uncropped, full resolution image
-* `comment` represents a comment from the author of the object which gives insight into the camera's corresponding drone model and properties
-* `lensType` is one of two values: `perspective` or `fisheye`, used for applying the correct correction equations for distortion of incoming light by the camera lens. Read below for further details
-* `radialR1` represents the first radial distortion coefficient for the camera's lens
-* `radialR2` represents the second radial distortion coefficient for the camera's lens
-* `radialR3` represents the third radial distortion coefficient for the camera's lens
-* `tangentialT1` represents the first tangential distortion coefficient for the camera's lens
-* `tangentialT2` represents the second tangential distortion coefficient for the camera's lens
+### Either:
 
-#### Conversion of calibration_data.csv produced by this script into droneModels.json format
+* Email your calibration file generated by this script to  [support@theta.limited](mailto:support@theta.limited?subject=[GitHub]%20My%20Drone%20Calibration)
+* create a pull request in the [DroneModels](https://github.com/Theta-Limited/DroneModels) repo to contribute your calibration to the OpenAthena project(s):
 
-Output from this script in the filename `calibration_data.csv` will appear as such:
-
-```
-Camera Matrix
-2805.2529685860704,0.0,2034.627323877116
-0.0,2815.674941815058,1445.6706286054327
-0.0,0.0,1.0
-Distortion Coefficients
-0.11416479395258083,-0.26230384345579,-0.004601610146546272,0.0026292475166887,0.22906477778853437
-```
-
-**\( f_x \)** in this example is 2805.25...
-
-**\( f_y \)** in this example is 2815.67...
-
-To obtain the values `ccdWidthMMPerPixel` and `ccdHeightMMPerPixel` for droneModels.json, use the following formulas:
-
-ccdWidthMMPerPixel = focal_length / **\( f_x \)**
-
-
-ccdHeightMMPerPixel = focal_length / **\( f_y \)**
-
-Where `focal_length` is the focal length of the camera in millimeters, either as a known fixed value for the camera or obtainable from the tag Exif.Photo.FocalLength using this command:
-```bash
-exiv2 -P kt FILENAME.JPG
-```
-
-`radialR1` is the first value in Distortion Coefficients (0.114... in this example)
-
-`radialR2` is the second value in Distortion Coefficients (-0.262... in this example)
-
-`tangentialT1` is the third value in Distortion Coefficients (-0.004... in this example)
-
-`tangentialT2` is the fouth value in Distortion Coefficients (0.002... in this example)
-
-`radialR3` is the fifth value in Distortion Coefficients (0.229... in this example)
+[https://github.com/Theta-Limited/DroneModels](https://github.com/Theta-Limited/DroneModels)
