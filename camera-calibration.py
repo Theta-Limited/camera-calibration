@@ -1,4 +1,5 @@
 import sys
+import os
 import numpy as np
 import cv2
 import glob
@@ -39,7 +40,7 @@ def calculate_ccd_width_height_per_pixel(focal_length, mtx):
 
 import json
 
-def format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixels, height_pixels):
+def format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixels, height_pixels, drone_name):
     ccd_width_mm_per_pixel, ccd_height_mm_per_pixel = calculate_ccd_width_height_per_pixel(focal_length, mtx)
 
     calibration_data = {
@@ -56,10 +57,9 @@ def format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixel
         "tangentialT1": dist[0][2],
         "tangentialT2": dist[0][3]
     }
+    if drone_name:
+        calibration_data["comment"] = drone_name
 
-    # json_filename = f"{make.lower()}{model.upper()}.json"
-    # with open(json_filename, 'w') as jsonfile:
-    #     json.dump(calibration_data, jsonfile, indent=4)
     return json.dumps(calibration_data, indent=4)
 
 
@@ -84,7 +84,8 @@ def calibrate_camera(image_dir, square_size, num_rows, num_cols):
     width_pixels = height_pixels = None
     focal_length = make = model = None
 
-    for image_path in image_paths:
+    for idx, image_path in enumerate(image_paths):
+        print(f"Processing image {idx + 1}/{len(image_paths)}: {os.path.basename(image_path)}")
         img = cv2.imread(image_path)
         if img is None:
             continue
@@ -127,7 +128,11 @@ def calibrate_camera(image_dir, square_size, num_rows, num_cols):
     return focal_length, make, model, mtx, dist, width_pixels, height_pixels
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description='Camera Calibration Script.')
+    parser = argparse.ArgumentParser(
+        description='Camera Calibration Script for OpenAthena.',
+        epilog='Example command:\n  python3 camera-calibration.py --image_dir path/to/images --square_size 100 --num_rows 9 --num_cols 12',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument('-d', '--image_dir', type=str, default=os.getcwd(),
                         help='Directory of calibration images. Default is the current working directory.')
     parser.add_argument('-s', '--square_size', type=float, required=True,
@@ -136,18 +141,26 @@ def parse_arguments():
                         help='Total number of rows of squares on the chessboard.')
     parser.add_argument('-c', '--num_cols', type=int, required=True,
                         help='Total number of columns of squares on the chessboard.')
+    parser.add_argument('-n', '--drone_name', type=str, default="",
+                        help='Human-readable name of the drone model. Optional.')
+
 
     return parser.parse_args()
 
 if __name__ == "__main__":
     args = parse_arguments()
+    drone_name = args.drone_name
+    if not drone_name:
+        drone_name = input("Enter a human-readable name for your drone model (leave blank to omit): ")
+
     focal_length, make, model, mtx, dist, width_pixels, height_pixels = calibrate_camera(
         args.image_dir, args.square_size, args.num_rows, args.num_cols
     )
 
     # Convert the calibration data to JSON format
-    calibration_json_data = format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixels, height_pixels)
+    calibration_json_data = format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixels, height_pixels, drone_name)
     # print to stdout
+    print("Here you go!:")
     print(calibration_json_data)
     # save to file
     json_filename = f"{make.lower()}{model.upper()}.json"
