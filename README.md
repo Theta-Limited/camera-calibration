@@ -100,6 +100,29 @@ The script outputs the camera matrix and distortion coefficients to:
 - Standard output as text in the terminal.
 - A file of the name makeMODEL.json, where the camera make and model name are obtained from image EXIF metadata
 
-Both are formatted as a json entry in the same format used in the [droneModels.json](https://github.com/Theta-Limited/DroneModels) database. Please email [support@theta.limited](mailto:support@theta.limited?subject=[GitHub]%20My%20Drone%20Calibration) or create a pull request in the [DroneModels](https://github.com/Theta-Limited/DroneModels) repo to contribute your calibration to the OpenAthena project:
+Both are formatted as a json entry in the same format used in the [droneModels.json](https://github.com/Theta-Limited/DroneModels) database.
+
+E.g: here is what the ouptut json looks like for a DJI Mini 3 Pro:
+```JSON
+    {
+      "makeModel": "djiFC3582",
+      "isThermal": false,
+      "ccdWidthMMPerPixel": "0.0023883764",
+      "ccdHeightMMPerPixel": "0.002379536",
+      "widthPixels": 4032,
+      "heightPixels": 3024,
+      "comment": "DJI Mini 3 Pro",
+      "lensType": "perspective",
+      "radialR1": 0.11416479395258083,
+      "radialR2": -0.26230384345579,
+      "radialR3": 0.22906477778853437,
+      "tangentialT1": -0.004601610146546272,
+      "tangentialT2": 0.0026292475166887
+    }
+```
+
+## Contributing your calibration to OpenAthena
+
+Please email [support@theta.limited](mailto:support@theta.limited?subject=[GitHub]%20My%20Drone%20Calibration) or create a pull request in the [DroneModels](https://github.com/Theta-Limited/DroneModels) repo to contribute your calibration to the OpenAthena project(s):
 
 [https://github.com/Theta-Limited/DroneModels](https://github.com/Theta-Limited/DroneModels)
