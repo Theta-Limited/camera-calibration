@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import cv2
 import glob
@@ -18,9 +19,14 @@ def get_exif_data(image_path):
             exif_data[decoded] = value
 
     # Extract focal length, make, and model
-    focal_length = exif_data.get('FocalLength', (0,1))[0] / exif_data.get('FocalLength', (0,1))[1]
-    make = exif_data.get('Make', '').lower() # lowercase make name to comply with OA droneModels.json convention
-    model = exif_data.get('Model', '').upper() # uppercase model name to comply with OA droneModels.json convention
+    focal_length_data = exif_data.get('FocalLength')
+    if focal_length_data:
+        focal_length = focal_length_data.numerator / focal_length_data.denominator
+    else:
+        focal_length = 0
+
+    make = exif_data.get('Make', '').lower()  # lowercase make name to comply with OA droneModels.json convention
+    model = exif_data.get('Model', '').upper()  # uppercase model name to comply with OA droneModels.json convention
 
     return focal_length, make, model
 
@@ -87,6 +93,12 @@ def calibrate_camera(image_dir, square_size, num_rows, num_cols):
         # Extract EXIF data from the first image
         if focal_length is None or make is None or model is None:
             focal_length, make, model = get_exif_data(image_path)
+            if focal_length == 0.0:
+                sys.exit("Focal Length could not be obtained from image EXIF data, please perform calculations manually")
+            if make is None or make == "":
+                make = "unknownmake"
+            if model is None or model == "":
+                model = "UNKNOWNMODEL"
             height_pixels, width_pixels = gray.shape[:2]
 
         ret, corners = cv2.findChessboardCorners(gray, (cols, rows), None)
