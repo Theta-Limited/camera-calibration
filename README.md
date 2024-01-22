@@ -109,8 +109,8 @@ E.g: here is what the ouptut json looks like for a DJI Mini 3 Pro:
     {
       "makeModel": "djiFC3582",
       "isThermal": false,
-      "ccdWidthMMPerPixel": "0.0023883764",
-      "ccdHeightMMPerPixel": "0.002379536",
+      "ccdWidthMMPerPixel": "0.0023883764/1.0",
+      "ccdHeightMMPerPixel": "0.002379536/1.0",
       "widthPixels": 4032,
       "heightPixels": 3024,
       "comment": "DJI Mini 3 Pro",
