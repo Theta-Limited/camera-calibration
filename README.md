@@ -1,7 +1,7 @@
 # Camera Calibration Script
 
 ## Overview
-This Python script is designed for camera calibration using a chessboard pattern. It computes the camera matrix and distortion coefficients, which are essential for correcting lens distortion and understanding the camera's intrinsic parameters. The script then outputs the calibration data as an entry in [json](https://en.wikipedia.org/wiki/JSON) format suitable for inclusion in OpenAthena's [droneModels.json](https://github.com/Theta-Limited/DroneModels) calibration database.
+This Python script is designed for camera calibration using a chessboard pattern. It computes the camera matrix and distortion coefficients, which are essential for correcting lens distortion and understanding the camera's intrinsic parameters. The script then outputs the calibration data as an entry in [json](https://en.wikipedia.org/wiki/JSON) format suitable for inclusion in [OpenAthena's](https://github.com/Theta-Limited) [droneModels.json](https://github.com/Theta-Limited/DroneModels) calibration database.
 
 This script does not yet support and will not work correctly for [fisheye camera lenses](https://en.wikipedia.org/wiki/Fisheye_lens).
 
