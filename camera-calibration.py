@@ -45,7 +45,7 @@ def format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixel
 
     calibration_data = {
         "makeModel": make.lower() + model.upper(),
-        "isThermal": "false",
+        "isThermal": false,
         "ccdWidthMMPerPixel": str(ccd_width_mm_per_pixel) + "/1.0",
         "ccdHeightMMPerPixel": str(ccd_height_mm_per_pixel) + "/1.0",
         "widthPixels": width_pixels,
