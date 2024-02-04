@@ -29,6 +29,10 @@ def get_exif_data(image_path):
     make = exif_data.get('Make', '').lower()  # lowercase make name to comply with OA droneModels.json convention
     model = exif_data.get('Model', '').upper()  # uppercase model name to comply with OA droneModels.json convention
 
+    # sanitize make an model string
+    make = make.replace('\u0000', '').strip()
+    model = model.replace('\u0000', '').strip()
+
     return focal_length, make, model
 
 def calculate_ccd_width_height_per_pixel(focal_length, mtx):
