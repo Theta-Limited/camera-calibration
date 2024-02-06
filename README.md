@@ -131,3 +131,7 @@ E.g: here is what the ouptut json looks like for a DJI Mini 3 Pro:
 * create a pull request in the [DroneModels](https://github.com/Theta-Limited/DroneModels) repo to contribute your calibration to the OpenAthena project(s):
 
 [https://github.com/Theta-Limited/DroneModels](https://github.com/Theta-Limited/DroneModels)
+
+### Legal:
+
+By making such a contribution of your drone's calibration data, you accept to the terms of Theta's [Contributor License Agreement](https://github.com/Theta-Limited/Contributor-License-Agreement)
