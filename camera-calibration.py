@@ -18,6 +18,8 @@ def get_exif_data(image_path):
         for tag, value in exif.items():
             decoded = TAGS.get(tag, tag)
             exif_data[decoded] = value
+    else:
+        return None, None, None
 
     # Extract focal length, make, and model
     focal_length_data = exif_data.get('FocalLength')
@@ -49,7 +51,7 @@ def format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixel
 
     calibration_data = {
         "makeModel": make.lower() + model.upper(),
-        "isThermal": false,
+        "isThermal": False,
         "ccdWidthMMPerPixel": str(ccd_width_mm_per_pixel) + "/1.0",
         "ccdHeightMMPerPixel": str(ccd_height_mm_per_pixel) + "/1.0",
         "widthPixels": width_pixels,
@@ -67,7 +69,20 @@ def format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixel
     return json.dumps(calibration_data, indent=4)
 
 
-def calibrate_camera(image_dir, square_size, num_rows, num_cols):
+def calibrate_camera(args):
+    image_dir, square_size, num_rows, num_cols = args.image_dir, args.square_size, args.num_rows, args.num_cols
+    width_pixels = height_pixels = None
+
+    focal_length = make = model = None
+    if args.focal_length is not None and args.focal_length != 0.0:
+        focal_length = args.focal_length
+        if (focal_length <= 0.0):
+            sys.exit("FATAL ERROR: focal length <= 0.0 mm is not valid!")
+    if args.make is not None and args.make != "":
+        make = args.make.strip().lower()
+    if args.model is not None and args.model != "":
+        model = args.model.strip().upper()
+
     rows = num_rows - 1  # Convert number of squares to number of corners
     cols = num_cols - 1
     square_size = square_size / 1000.0  # Convert mm to meters
@@ -80,13 +95,13 @@ def calibrate_camera(image_dir, square_size, num_rows, num_cols):
     imgpoints = []  # 2d points in image plane
 
     # Read images
-    image_types = ('*.jpg', '*.JPG', '*.jpeg', '*.JPEG')
+    image_types = ('*.jpg', '*.jpeg')
     image_paths = []
     for extension in image_types:
         image_paths.extend(glob.glob(os.path.join(image_dir, extension)))
-
-    width_pixels = height_pixels = None
-    focal_length = make = model = None
+        # Also include uppercase variants if not on Windows
+        if sys.platform != "win32":
+            image_paths.extend(glob.glob(os.path.join(image_dir, extension.upper())))
 
     for idx, image_path in enumerate(image_paths):
         print(f"Processing image {idx + 1}/{len(image_paths)}: {os.path.basename(image_path)}")
@@ -97,13 +112,23 @@ def calibrate_camera(image_dir, square_size, num_rows, num_cols):
 
         # Extract EXIF data from the first image
         if focal_length is None or make is None or model is None:
-            focal_length, make, model = get_exif_data(image_path)
-            if focal_length == 0.0:
-                sys.exit("Focal Length could not be obtained from image EXIF data, please perform calculations manually")
-            if make is None or make == "":
-                make = "unknownmake"
-            if model is None or model == "":
-                model = "UNKNOWNMODEL"
+            exif_focal_length, exif_make, exif_model = get_exif_data(image_path)
+            if focal_length is None and exif_focal_length is not None:
+                focal_length = exif_focal_length
+            while focal_length is None or focal_length <= 0.0:
+                strin = input("Focal Length could not be obtained from image EXIF data, please input manually:")
+                try:
+                    focal_length = float(strin)
+                except ValueError:
+                    print("ERROR: " + strin + " is not a valid number! Please try again.")
+            if make is None and exif_make is not None:
+                make = exif_make
+            while make is None or make == "":
+                make = input("Camera Make (manufacturer) could not be obtained from image EXIF data, please input manually:").strip().lower()
+            if model is None and exif_model is not None:
+                model = exif_model
+            while model is None or model == "":
+                model = input("Camera Model (device name) could not be obtained from image EXIF data, please input manually:").strip().upper()
             height_pixels, width_pixels = gray.shape[:2]
 
         ret, corners = cv2.findChessboardCorners(gray, (cols, rows), None)
@@ -146,7 +171,13 @@ def parse_arguments():
     parser.add_argument('-c', '--num_cols', type=int, required=True,
                         help='Total number of columns of squares on the chessboard.')
     parser.add_argument('-n', '--drone_name', type=str, default="",
-                        help='Human-readable name of the drone model. Optional.')
+                        help='Human-readable text for the comment field for your drone model. Optional.')
+    parser.add_argument('-f', '--focal_length', type=float, required=False,
+                        help='Focal length (in mm) of the camera to be calibrated. Mandatory only if such data is not available within EXIF')
+    parser.add_argument('-m', '--make', type=str, required=False,
+                        help='Name of the manufacturer of the camera. Mandatory only if such is not available within EXIF metadata')
+    parser.add_argument('-M', '--model', type=str, required=False,
+                        help='model name of the camera. Mandatory only if such data is not available within EXIF metadata')
 
 
     return parser.parse_args()
@@ -155,11 +186,9 @@ if __name__ == "__main__":
     args = parse_arguments()
     drone_name = args.drone_name
     if not drone_name:
-        drone_name = input("Enter a human-readable name for your drone model (leave blank to omit): ")
+        drone_name = input("Enter human-readable text for the comment field for your drone model (leave blank to omit): ")
 
-    focal_length, make, model, mtx, dist, width_pixels, height_pixels = calibrate_camera(
-        args.image_dir, args.square_size, args.num_rows, args.num_cols
-    )
+    focal_length, make, model, mtx, dist, width_pixels, height_pixels = calibrate_camera(args)
 
     # Convert the calibration data to JSON format
     calibration_json_data = format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixels, height_pixels, drone_name)
