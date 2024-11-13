@@ -76,11 +76,22 @@ pip install -r requirements.txt # may be 'pip3' on some systems
 ```
 
 ## Usage
+
+### Mandatory arguments
+
 The script can be executed from the command line with the following arguments:
 - `--image_dir`: The directory containing calibration images (default is the current working directory if not provided).
 - `--square_size`: The size of one square on the chessboard, in millimeters.
 - `--num_rows`: The total number of rows of squares on the chessboard (as counted normally).
 - `--num_cols`: The total number of columns of squares on the chessboard (as counted normally).
+
+### Optional arguments
+
+The following arguments are optional and may not be needed in most cases:
+- `--make`: Name of the manufacturer of the camera. Used only if this not available within image EXIF metadata
+- `--model`: Model name of the camera. Used only if this is not available within image EXIF metadata
+- `--focal_length`: Focal length (in mm) of the camera. Used only if this is not available within image EXIF metadata
+- `--drone_comment`: Human-readable text for the comment field for your drone model. Entirely optional.
 
 ### Command Line Syntax
 ```bash
@@ -93,7 +104,7 @@ python3 camera-calibration.py --square_size 100 --num_rows 9 --num_cols 12
 ```
 
 ## Important Notes
-- **Square Size**: Input the size of the chessboard squares in millimeters.
+- **Square Size**: Input the size of the physical chessboard squares in millimeters. Results will be inacurate if the true square size is different.
 - **Rows and Columns**: Input the number of rows and columns as you would count them normally on the chessboard. The script internally converts these to the number of corners, as required by OpenCV for calibration.
 - **Chessboard Pattern**: Ensure that the entire chessboard is visible in the calibration images, taken from various angles and distances.
 

@@ -46,7 +46,7 @@ def calculate_ccd_width_height_per_pixel(focal_length, mtx):
 
 import json
 
-def format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixels, height_pixels, drone_name):
+def format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixels, height_pixels, drone_comment):
     ccd_width_mm_per_pixel, ccd_height_mm_per_pixel = calculate_ccd_width_height_per_pixel(focal_length, mtx)
 
     calibration_data = {
@@ -63,8 +63,8 @@ def format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixel
         "tangentialT1": dist[0][2],
         "tangentialT2": dist[0][3]
     }
-    if drone_name:
-        calibration_data["comment"] = drone_name
+    if drone_comment:
+        calibration_data["comment"] = drone_comment
 
     return json.dumps(calibration_data, indent=4)
 
@@ -170,7 +170,7 @@ def parse_arguments():
                         help='Total number of rows of squares on the chessboard.')
     parser.add_argument('-c', '--num_cols', type=int, required=True,
                         help='Total number of columns of squares on the chessboard.')
-    parser.add_argument('-n', '--drone_name', type=str, default="",
+    parser.add_argument('-n', '--drone_comment', type=str, default="",
                         help='Human-readable text for the comment field for your drone model. Optional.')
     parser.add_argument('-f', '--focal_length', type=float, required=False,
                         help='Focal length (in mm) of the camera to be calibrated. Mandatory only if such data is not available within EXIF')
@@ -184,14 +184,14 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    drone_name = args.drone_name
-    if not drone_name:
-        drone_name = input("Enter human-readable text for the comment field for your drone model (leave blank to omit): ")
+    drone_comment = args.drone_comment
+    if not drone_comment:
+        drone_comment = input("Enter human-readable text for the comment field for your drone model (leave blank to omit): ")
 
     focal_length, make, model, mtx, dist, width_pixels, height_pixels = calibrate_camera(args)
 
     # Convert the calibration data to JSON format
-    calibration_json_data = format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixels, height_pixels, drone_name)
+    calibration_json_data = format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixels, height_pixels, drone_comment)
     # print to stdout
     print("Here you go!:")
     print(calibration_json_data)
