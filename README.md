@@ -5,7 +5,7 @@ This Python script is designed for camera calibration using a chessboard pattern
 
 This script does not yet support and will not work correctly for [fisheye camera lenses](https://en.wikipedia.org/wiki/Fisheye_lens).
 
-Included in this repository is the file [36in_x_48in_9col_12row_100mm_cv_poster.pdf](./36in_x_48in_9col_12row_100mm_cv_poster.pdf), which contains a chessboard pattern with a square size of 100mm sized to print on a 36" x 48" poster. It is recommended to turn this poster sideways for taking pictures with the camera you wish to calibrate.
+Included in this repository is the file [36in_x_48in_9col_12row_100mm_cv_poster.pdf](./36in_x_48in_9col_12row_100mm_cv_poster.pdf), which contains a chessboard pattern with a square size of 100mm sized to print on a 36" x 48" poster. It is recommended to turn this poster sideways for taking pictures with the camera you wish to calibrate. Make sure to attach the poster to a rigid, flat surface such as a posterboard or large piece of cardboard.
 
 You may also generate a pattern of a different size using this webpage:
 https://calib.io/pages/camera-calibration-pattern-generator
@@ -38,19 +38,23 @@ The number of calibration images you use and the way you take them are crucial f
    - Include shots from different distances – some close-up shots of the chessboard and some from farther away.
    - Ensure the chessboard is clearly visible and occupies a significant portion of the frame in each image.
 
-4. **Avoid Reflections and Shadows**:
+4. **Avoid Covering the Black Squares**:
+   - Be carefull that you do not cover any of the black squares if holding the calibration pattern by hand.
+   - The calibration script looks for the corners of the black squares on the calibration pattern. If any are obstructed the algorithm will produce poor results
+
+5. **Avoid Reflections and Shadows**:
    - Ensure consistent lighting and avoid strong shadows or reflections on the chessboard, as these can interfere with corner detection.
 
-5. **Use the full sensor**:
+6. **Use the full sensor**:
    - Most cameras crop pixels from top and bottom of their 4:3 image sensor to make it fit in widescreen 16:9. Set your drone camera to 4:3 to ensure you get full coverage of the image sensor
 
-6. **Ensure the Entire Chessboard is Visible**:
+7. **Ensure the Entire Chessboard is Visible**:
    - All four corners of the pattern should be in the frame for each image.
 
-7. **Consistent Chessboard Orientation**:
+8. **Consistent Chessboard Orientation**:
    - While varying angles and distances, keep the orientation of the chessboard consistent (e.g., always keep the same corner or side of the chessboard in the same relative position).
 
-8. **Use a Stable Chessboard Setup**:
+9. **Use a Stable Chessboard Setup**:
    - The chessboard should be flat and rigid. Any bending or flexing can distort the pattern and affect accuracy.
 
 ### Post-processing the Images
