@@ -49,6 +49,10 @@ import json
 def format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixels, height_pixels, drone_comment):
     ccd_width_mm_per_pixel, ccd_height_mm_per_pixel = calculate_ccd_width_height_per_pixel(focal_length, mtx)
 
+    # Helper function to format floats as decimal strings
+    def format_float(value, decimal_places=16):
+        return f"{value:.{decimal_places}f}"
+
     calibration_data = {
         "makeModel": make.lower() + model.upper(),
         "isThermal": False,
@@ -57,11 +61,11 @@ def format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixel
         "widthPixels": width_pixels,
         "heightPixels": height_pixels,
         "lensType": "perspective",
-        "radialR1": dist[0][0],
-        "radialR2": dist[0][1],
-        "radialR3": dist[0][4],
-        "tangentialT1": dist[0][2],
-        "tangentialT2": dist[0][3]
+        "radialR1": format_float(dist[0][0]),
+        "radialR2": format_float(dist[0][1]),
+        "radialR3": format_float(dist[0][4]),
+        "tangentialT1": format_float(dist[0][2]),
+        "tangentialT2": format_float(dist[0][3])
     }
     if drone_comment:
         calibration_data["comment"] = drone_comment
