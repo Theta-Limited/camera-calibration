@@ -26,35 +26,39 @@ The number of calibration images you use and the way you take them are crucial f
 
 ### Tips for Taking Calibration Images
 
-1. **Cover the Entire Field of View**:
+1. **Set your camera to its minimum zoom level**
+   - Set your camera to its minimum zoom (both digital and optical) for taking calibration images
+   - Keep in mind that some drone camera gimbals (such as the Parrot Anafi) switch between different cameras at different zoom levels, for these each camera will need to be calibrated separately for best results
+
+2. **Cover the Entire Field of View**:
    - Ensure that the chessboard is captured from different parts of the camera's field of view in various images. This includes corners and edges.
    - Avoid using only center-focused images.
 
-2. **Vary the Orientation and Angle**:
+3. **Vary the Orientation and Angle**:
    - Take pictures from various angles: some tilted up, down, left, right, and some rotated at slight angles.
    - This helps in accurately capturing the camera's lens distortions.
 
-3. **Vary the Distance**:
+4. **Vary the Distance**:
    - Include shots from different distances – some close-up shots of the chessboard and some from farther away.
    - Ensure the chessboard is clearly visible and occupies a significant portion of the frame in each image.
 
-4. **Avoid Covering the Black Squares**:
+5. **Avoid Covering the Black Squares**:
    - Be carefull that you do not cover any of the black squares if holding the calibration pattern by hand.
    - The calibration script looks for the corners of the black squares on the calibration pattern. If any are obstructed the algorithm will produce poor results
 
-5. **Avoid Reflections and Shadows**:
+6. **Avoid Reflections and Shadows**:
    - Ensure consistent lighting and avoid strong shadows or reflections on the chessboard, as these can interfere with corner detection.
 
-6. **Use the full sensor**:
+7. **Use the full sensor**:
    - Most cameras crop pixels from top and bottom of their 4:3 image sensor to make it fit in widescreen 16:9. Set your drone camera to 4:3 to ensure you get full coverage of the image sensor
 
-7. **Ensure the Entire Chessboard is Visible**:
+8. **Ensure the Entire Chessboard is Visible**:
    - All four corners of the pattern should be in the frame for each image.
 
-8. **Consistent Chessboard Orientation**:
+9. **Consistent Chessboard Orientation**:
    - While varying angles and distances, keep the orientation of the chessboard consistent (e.g., always keep the same corner or side of the chessboard in the same relative position).
 
-9. **Use a Stable Chessboard Setup**:
+10. **Use a Stable Chessboard Setup**:
    - The chessboard should be flat and rigid. Any bending or flexing can distort the pattern and affect accuracy.
 
 ### Post-processing the Images
