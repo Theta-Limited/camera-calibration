@@ -59,11 +59,10 @@ The number of calibration images you use and the way you take them are crucial f
    - While varying angles and distances, keep the orientation of the chessboard consistent (e.g., always keep the same corner or side of the chessboard in the same relative position).
 
 10. **Use a Stable Chessboard Setup**:
-   - The chessboard should be flat and rigid. Any bending or flexing can distort the pattern and affect accuracy.
+    - The chessboard should be flat and rigid. Any bending or flexing can distort the pattern and affect accuracy.
 
 ### Post-processing the Images
-
-- **Check for Clarity**: Before running the calibration, visually inspect the images to ensure that the chessboard corners are clear and distinguishable. Delete images that don't meet these standards.
+- **Check for Clarity**: Before running the calibration, visually inspect the images to ensure that the chessboard and black square corners are clear, distinguishable, and un-obstructed. Delete images that don't meet these standards.
 
 ## Installation
 
