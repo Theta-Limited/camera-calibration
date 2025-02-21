@@ -61,11 +61,11 @@ def format_as_dronemodels_json(focal_length, make, model, mtx, dist, width_pixel
         "widthPixels": width_pixels,
         "heightPixels": height_pixels,
         "lensType": "perspective",
-        "radialR1": format_float(dist[0][0]),
-        "radialR2": format_float(dist[0][1]),
-        "radialR3": format_float(dist[0][4]),
-        "tangentialT1": format_float(dist[0][2]),
-        "tangentialT2": format_float(dist[0][3])
+        "radialR1": float(format_float(dist[0][0])),
+        "radialR2": float(format_float(dist[0][1])),
+        "radialR3": float(format_float(dist[0][4])),
+        "tangentialT1": float(format_float(dist[0][2])),
+        "tangentialT2": float(format_float(dist[0][3]))
     }
     if drone_comment:
         calibration_data["comment"] = drone_comment
