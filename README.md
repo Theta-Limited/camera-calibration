@@ -1,11 +1,12 @@
 # Camera Calibration Script
 
 ## Overview
-This Python script is designed for camera calibration using a chessboard pattern. It computes the camera matrix and distortion coefficients, which are essential for correcting lens distortion and understanding the camera's intrinsic parameters. The script then outputs the calibration data as an entry in [json](https://en.wikipedia.org/wiki/JSON) format suitable for inclusion in [OpenAthena's](https://github.com/Theta-Limited) [droneModels.json](https://github.com/Theta-Limited/DroneModels) calibration database.
+The Python script [`camera-calibration.py`](./camera-calibration.py) is designed for camera calibration using a chessboard pattern. It computes the camera's intrinsics matrix and distortion coefficients, which are essential for correcting lens distortion and calculating the pitch and yaw angle off from center for any given image pixel. The script then outputs the calibration data as an entry in [json](https://en.wikipedia.org/wiki/JSON) format suitable for inclusion in [OpenAthena's](https://github.com/Theta-Limited) [droneModels.json](https://github.com/Theta-Limited/DroneModels) calibration database.
 
 This script does not yet support and will not work correctly for [fisheye camera lenses](https://en.wikipedia.org/wiki/Fisheye_lens).
 
-Included in this repository is the file [36in_x_48in_9col_12row_100mm_cv_poster.pdf](./36in_x_48in_9col_12row_100mm_cv_poster.pdf), which contains a chessboard pattern with a square size of 100mm sized to print on a 36" x 48" poster. It is recommended to turn this poster sideways for taking pictures with the camera you wish to calibrate. Make sure to attach the poster to a rigid, flat surface such as a posterboard or large piece of cardboard.
+Included in this repository is the file [36in_x_48in_9col_12row_100mm_cv_poster.pdf](./36in_x_48in_9col_12row_100mm_cv_poster.pdf), which contains a chessboard pattern with a square size of 100mm sized to print on a 36" x 48" poster. It is recommended to turn this poster sideways for taking pictures with the camera you wish to calibrate. Make sure to attach the poster to a rigid, flat surface such as a posterboard or large piece of cardboard. It is imperative that the squares on the poster pattern remain parallel to eachother and are not physically warped or distorted. 
+
 
 You may also generate a pattern of a different size using this webpage:
 https://calib.io/pages/camera-calibration-pattern-generator
@@ -13,6 +14,13 @@ https://calib.io/pages/camera-calibration-pattern-generator
 Set the Target Type to `Checkerboard` and adjust width, height rows, columns and checker width as needed to fit your print format. Use these new values with the script as described below.
 
 ![Picture taken by Mini3Pro of the chessboard pattern printed on poster paper](./DJI_0218.JPG)
+
+# Calculate Camera Skew
+
+A separate script, [`calculate-camera-skew.py`](./calculate-camera-skew.py) is available in this repository for calculating the pitch and yaw angles for misalignment between two cameras on the same drone camera gimbal. Documentation on use of this script is available in [CALCULATE_SKEW.md](./CALCULATE_SKEW.md).
+
+
+# Camera Calibration
 
 ## Taking Calibration Images
 
