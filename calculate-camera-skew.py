@@ -6,7 +6,7 @@ import numpy as np
 import math
 from PIL import Image, ExifTags
 
-def get_exif_data(image_path):
+def get_exif_focal_length(image_path):
     """
     Extract focal length (in mm) from the image's EXIF metadata.
     Returns focal_length as a float, or None if not found.
@@ -27,6 +27,29 @@ def get_exif_data(image_path):
                 else:
                     return None
     return None
+
+def get_exif_digital_zoom_ratio(image_path):
+    """
+    Extract digital zoom ratio from the image's EXIF metadata.
+    Returns a float >= 1.0. Defaults to 1.0 if the tag is missing or invalid.
+    """
+    img = Image.open(image_path)
+    exif = img._getexif()
+    if exif is None:
+        return 1.0
+    for tag, value in exif.items():
+        decoded = ExifTags.TAGS.get(tag, tag)
+        if decoded == 'DigitalZoomRatio':
+            try:
+                ratio = float(value)
+            except Exception:
+                if hasattr(value, 'numerator') and hasattr(value, 'denominator'):
+                    ratio = value.numerator / value.denominator
+                else:
+                    ratio = 1.0
+            # Ensure ratio is not less than 1.0
+            return ratio if ratio >= 1.0 else 1.0
+    return 1.0
 
 def parse_fraction(frac_str):
     """
@@ -60,7 +83,7 @@ def find_chessboard_center(image, pattern_size):
     ret, corners = cv2.findChessboardCorners(gray, pattern_size, None)
     if not ret:
         raise ValueError("Chessboard pattern not found in image.")
-    corners = np.squeeze(corners)  # shape becomes (N,2)
+    corners = np.squeeze(corners) # shape becomes (N,2)
     center = np.mean(corners, axis=0)
     return center
 
@@ -81,24 +104,33 @@ def process_image(image_path, json_path, pattern_size):
     if image is None:
         raise ValueError(f"Image at {image_path} could not be loaded.")
 
-    # Get focal length from EXIF (in mm)
-    focal_mm = get_exif_data(image_path)
+    # Get actual image dimensions from the loaded image
+    actual_height, actual_width = image.shape[:2]
+
+    # Get focal length (in mm) and digital zoom ratio from EXIF
+    focal_mm = get_exif_focal_length(image_path)
     if focal_mm is None or focal_mm <= 0.0:
         raise ValueError(f"Could not obtain a valid focal length from EXIF for {image_path}.")
+    digital_zoom_ratio = get_exif_digital_zoom_ratio(image_path)
 
-    # Load intrinsic parameters
-    mm_per_pixel, width_pixels, height_pixels = load_intrinsics(json_path)
-    if width_pixels is None or mm_per_pixel is None:
+    # Load intrinsic parameters from JSON (ccd width, etc.)
+    mm_per_pixel, ccdWidthPixels, ccdHeightPixels = load_intrinsics(json_path)
+    if ccdWidthPixels is None or mm_per_pixel is None:
         raise ValueError(f"Intrinsic parameters missing in {json_path}.")
 
-    # Compute effective focal length in pixel units
-    focal_pixels = focal_mm / mm_per_pixel
+    # Compute scale ratio:
+    # If the input image is scaled down relative to the original sensor size (CCD width),
+    # adjust by the digital zoom ratio.
+    scale_ratio = (actual_width * digital_zoom_ratio) / ccdWidthPixels
+
+    # Compute effective focal length in pixel units.
+    focal_pixels = (focal_mm / mm_per_pixel) * scale_ratio
 
     # Detect chessboard and compute its center
     chess_center = find_chessboard_center(image, pattern_size)
 
-    # Assume the principal point is at the image center
-    image_center = np.array([width_pixels / 2.0, height_pixels / 2.0])
+    # Assume the principal point is at the center of the full CCD resolution (from JSON)
+    image_center = np.array([ccdWidthPixels / 2.0, ccdHeightPixels / 2.0])
 
     # Compute offsets (in pixels) from the principal point
     # dx corresponds to horizontal (yaw) and dy to vertical (pitch)
@@ -129,7 +161,7 @@ def main():
     args = parse_arguments()
 
     # OpenCV expects the pattern size as number of inner corners.
-    # If the chessboard has num_rows squares, there are (num_rows - 1) inner corners.
+    # For a chessboard with num_rows squares there are (num_rows - 1) inner corners.
     pattern_size = (args.num_cols - 1, args.num_rows - 1)
 
     try:
