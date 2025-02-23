@@ -108,8 +108,10 @@ def process_image(image_path, json_path, pattern_size):
     actual_height, actual_width = image.shape[:2]
 
     # Get focal length (in mm) and digital zoom ratio from EXIF
+    # Replace focal_mm with fixed value for the known focal length if your camera does not provide EXIF metadata
     focal_mm = get_exif_focal_length(image_path)
     if focal_mm is None or focal_mm <= 0.0:
+        # If you get this error, see comment above
         raise ValueError(f"Could not obtain a valid focal length from EXIF for {image_path}.")
     digital_zoom_ratio = get_exif_digital_zoom_ratio(image_path)
 
@@ -129,8 +131,8 @@ def process_image(image_path, json_path, pattern_size):
     # Detect chessboard and compute its center
     chess_center = find_chessboard_center(image, pattern_size)
 
-    # Assume the principal point is at the center of the full CCD resolution (from JSON)
-    image_center = np.array([ccdWidthPixels / 2.0, ccdHeightPixels / 2.0])
+    # Assume the principal point is at the center of the image
+    image_center = np.array([actual_width / 2.0, actual_height / 2.0])
 
     # Compute offsets (in pixels) from the principal point
     # dx corresponds to horizontal (yaw) and dy to vertical (pitch)
