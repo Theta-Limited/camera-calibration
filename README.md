@@ -51,7 +51,7 @@ The number of calibration images you use and the way you take them are crucial f
    - Ensure the chessboard is clearly visible and occupies a significant portion of the frame in each image.
 
 5. **Avoid Covering the Black Squares**:
-   - Be carefull that you do not cover any of the black squares if holding the calibration pattern by hand.
+   - Be carefull that you do not cover any of the corners of the black squares if holding the calibration pattern by hand. Even covering one or two corners of black squares with your fingers can disrupt the calibration values!
    - The calibration script looks for the corners of the black squares on the calibration pattern. If any are obstructed the algorithm will produce poor results
 
 6. **Avoid Reflections and Shadows**:
