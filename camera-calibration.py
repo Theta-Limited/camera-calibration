@@ -99,13 +99,27 @@ def calibrate_camera(args):
     imgpoints = []  # 2d points in image plane
 
     # Read images
-    image_types = ('*.jpg', '*.jpeg')
+    image_types = ('*.jpg', '*.jpeg', '*.png')
     image_paths = []
     for extension in image_types:
         image_paths.extend(glob.glob(os.path.join(image_dir, extension)))
         # Also include uppercase variants if not on Windows
         if sys.platform != "win32":
             image_paths.extend(glob.glob(os.path.join(image_dir, extension.upper())))
+    if not os.path.isdir(image_dir):
+        sys.exit(f"FATAL ERROR: image directory does not exist or is not a directory: {image_dir}")
+
+    if len(image_paths) == 0:
+        searched_patterns = []
+        for extension in image_types:
+            searched_patterns.append(os.path.join(image_dir, extension))
+            if sys.platform != "win32":
+                searched_patterns.append(os.path.join(image_dir, extension.upper()))
+        sys.exit(
+            "FATAL ERROR: no calibration image files were found in specified folder.\n"
+            f"Image directory: {image_dir}\n"
+            "Searched for:\n  " + "\n  ".join(searched_patterns)
+        )
 
     for idx, image_path in enumerate(image_paths):
         print(f"Processing image {idx + 1}/{len(image_paths)}: {os.path.basename(image_path)}")
@@ -143,20 +157,20 @@ def calibrate_camera(args):
 
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
-    # # Save to .npz, CSV, and print to stdout
-    # np.savez('calibration_data.npz', matrix=mtx, distortion=dist)
+    # Save to .npz, CSV, and print to stdout
+    np.savez('calibration_data.npz', matrix=mtx, distortion=dist)
 
-    # # Output to CSV file
-    # with open('calibration_data.csv', 'w', newline='') as csvfile:
-    #     writer = csv.writer(csvfile)
-    #     writer.writerow(['Camera Matrix'])
-    #     writer.writerows(mtx)
-    #     writer.writerow(['Distortion Coefficients'])
-    #     writer.writerow(dist.ravel())
+    # Output to CSV file
+    with open('calibration_data.csv', 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['Camera Matrix'])
+        writer.writerows(mtx)
+        writer.writerow(['Distortion Coefficients'])
+        writer.writerow(dist.ravel())
 
-    # # Print intrinsics matrix and distortion params to stdout
-    # print("Camera Matrix:\n", mtx)
-    # print("\nDistortion Coefficients:\n", dist.ravel())
+    # Print intrinsics matrix and distortion params to stdout
+    print("Camera Matrix:\n", mtx)
+    print("\nDistortion Coefficients:\n", dist.ravel())
 
     return focal_length, make, model, mtx, dist, width_pixels, height_pixels
 
