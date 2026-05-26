@@ -1,17 +1,21 @@
 # Camera Calibration Script
 
 ## Overview
-The Python script [`camera-calibration.py`](./camera-calibration.py) is designed for camera calibration using a chessboard pattern. It computes the camera's intrinsics matrix and distortion coefficients, which are essential for correcting lens distortion and calculating the pitch and yaw angle off from center for any given image pixel. The script then outputs the calibration data as an entry in [json](https://en.wikipedia.org/wiki/JSON) format suitable for inclusion in [OpenAthena's](https://github.com/Theta-Limited) [droneModels.json](https://github.com/Theta-Limited/DroneModels) calibration database.
+The Python script [`camera-calibration.py`](./camera-calibration.py) performs drone camera calibration using pictures of a black and white  chessboard poster. It computes the camera's intrinsics matrix and lens distortion coefficients, which are essential parameters for OpenAthena to correctly calculate pitch (up and down) and yaw (left and right) angle off from center for any arbitrary pixel within a drone image. The script then outputs the calibration data as an entry in [json](https://en.wikipedia.org/wiki/JSON) format suitable for inclusion in [OpenAthena's](https://github.com/Theta-Limited) [droneModels.json](https://github.com/Theta-Limited/DroneModels) calibration database.
 
 This script does not yet support and will not work correctly for [fisheye camera lenses](https://en.wikipedia.org/wiki/Fisheye_lens).
 
-Included in this repository is the file [36in_x_48in_9col_12row_100mm_cv_poster.pdf](./36in_x_48in_9col_12row_100mm_cv_poster.pdf), which contains a chessboard pattern with a square size of 100mm sized to print on a 36" x 48" poster. It is recommended to turn this poster sideways for taking pictures with the camera you wish to calibrate. Make sure to attach the poster to a rigid, flat surface such as a posterboard or large piece of cardboard. It is imperative that the squares on the poster pattern remain parallel to eachother and are not physically warped or distorted.
+Included in this repository is are PDF files which can be used to print a chessboard calibration pattern poster.
 
+* [36in_x_48in_9row_12col_100mm_cv_poster.pdf](./36in_x_48in_9row_12col_100mm_cv_poster.pdf), is sized to print on an U.S. standard 36" x 48" poster. 
+* [ISO_A0_841mm_x_1189mm_8row_11col_100mm_squares.pdf](./ISO_A0_841mm_x_1189mm_8row_11col_100mm_squares.pdf) is sized to print on  international ISO A0 sized poster
 
-You may also generate a pattern of a different size using this webpage:
+You may also generate a pattern of any other size using this webpage:
 https://calib.io/pages/camera-calibration-pattern-generator
 
 Set the Target Type to `Checkerboard` and adjust width, height rows, columns and checker width as needed to fit your print format. Use these new values with the script as described below.
+
+It is recommended to orient the poster lengthwise (with its longest side parallel to the ground) for taking pictures with the camera you wish to calibrate. Make sure to attach the poster to a rigid, flat surface such as a posterboard or large piece of cardboard. It is imperative that the squares on the poster pattern are not physically warped or distorted.
 
 ![Picture taken by Mini3Pro of the chessboard pattern printed on poster paper](./DJI_0218.JPG)
 
@@ -19,7 +23,7 @@ Set the Target Type to `Checkerboard` and adjust width, height rows, columns and
 ### License
 
 
-   Copyright 2025 Theta Informatics LLC
+   Copyright 2026 Theta Informatics LLC
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -34,9 +38,9 @@ Set the Target Type to `Checkerboard` and adjust width, height rows, columns and
    limitations under the License.
 
 
-# Calculate Camera Skew
+<!-- # Calculate Camera Skew
 
-A separate script, [`calculate-camera-skew.py`](./calculate-camera-skew.py) is available in this repository for calculating the pitch and yaw angles for misalignment between two cameras on the same drone camera gimbal. Documentation on use of this script is available in [CALCULATE_SKEW.md](./CALCULATE_SKEW.md).
+A separate script, [`calculate-camera-skew.py`](./calculate-camera-skew.py) is available in this repository for calculating the pitch and yaw angles for misalignment between two cameras on the same drone camera gimbal. Documentation on use of this script is available in [CALCULATE_SKEW.md](./CALCULATE_SKEW.md). -->
 
 
 # Camera Calibration
@@ -54,8 +58,8 @@ The number of calibration images you use and the way you take them are crucial f
 ### Tips for Taking Calibration Images
 
 1. **Set your camera to its minimum zoom level**
-   - Set your camera to its minimum zoom (both digital and optical) for taking calibration images
-   - Keep in mind that some drone camera gimbals (such as the Parrot Anafi) switch between different cameras at different zoom levels, for these each camera will need to be calibrated separately for best results
+   - Set your camera to its minimum zoom (both digital and optical) for taking calibration images.
+   - Keep in mind that some drone camera gimbals (such as the Parrot Anafi) switch between different cameras at different zoom levels, for these each camera will need to be calibrated separately (each at their minimum respective zoom level) for best results.
 
 2. **Cover the Entire Field of View**:
    - Ensure that the chessboard is captured from different parts of the camera's field of view in various images. This includes corners and edges.
@@ -71,16 +75,16 @@ The number of calibration images you use and the way you take them are crucial f
 
 5. **Avoid Covering the Black Squares**:
    - Be carefull that you do not cover any of the corners of the black squares if holding the calibration pattern by hand. Even covering one or two corners of black squares with your fingers can disrupt the calibration values!
-   - The calibration script looks for the corners of the black squares on the calibration pattern. If any are obstructed the algorithm will produce poor results
+   - The calibration script works by looking for the corners of the black squares on the calibration pattern. If any of the corners are covered the calibration will be inaccurate.
 
 6. **Avoid Reflections and Shadows**:
    - Ensure consistent lighting and avoid strong shadows or reflections on the chessboard, as these can interfere with corner detection.
 
 7. **Use the full sensor**:
-   - Most cameras crop pixels from top and bottom of their 4:3 image sensor to make it fit in widescreen 16:9. Set your drone camera to 4:3 to ensure you get full coverage of the image sensor
+   - Most cameras crop pixels from top and bottom of their 4:3 image sensor to make it fit in widescreen 16:9. Set your drone camera to 4:3 to ensure you get full coverage of the image sensor at its maximum possible resolution.
 
 8. **Ensure the Entire Chessboard is Visible**:
-   - All four corners of the pattern should be in the frame for each image.
+   - All four corners of the pattern should be in the frame for every image.
 
 9. **Consistent Chessboard Orientation**:
    - While varying angles and distances, keep the orientation of the chessboard consistent (e.g., always keep the same corner or side of the chessboard in the same relative position).
@@ -94,24 +98,29 @@ The number of calibration images you use and the way you take them are crucial f
 ## Installation
 
 ### Requirements
-- Python 3.x
+- [Python 3.x](https://www.python.org/downloads/)
 - numpy
 - opencv-python
 - Pillow
 
-Clone this project using git (or download as a zip file and extract it)
+Clone this project using git (or download as a zip file and extract it):
 ```
 git clone https://github.com/Theta-Limited/camera-calibration.git
 ```
 
-Enter the project directory, then install the necessary libraries using:
+Now enter the project directory, create a python virtualenv, and activate it
+
+From the terminal (PowerShell on Windows, Terminal app on MacOS and Linux):
 ```bash
-pip install -r requirements.txt # may be 'pip3' on some systems
+cd camera-calibration
+python3 -m venv camera-calibration-venv # may just be 'python' on some systems
+source camera-calibration-venv/bin/activate
+pip install -r requirements.txt 
 ```
 
 ## Usage
 
-### Mandatory arguments
+### Required arguments
 
 The script can be executed from the command line with the following arguments:
 - `--image_dir`: The directory containing calibration images (default is the current working directory if not provided).
@@ -119,23 +128,32 @@ The script can be executed from the command line with the following arguments:
 - `--num_rows`: The total number of rows of squares on the chessboard (as counted normally).
 - `--num_cols`: The total number of columns of squares on the chessboard (as counted normally).
 
+If `make`, `model`, and/or `focal_length` are not present in the calibration images' EXIF metadata you will be prompted to input these values manually.
 ### Optional arguments
 
 The following arguments are optional and may not be needed in most cases:
 - `--make`: Name of the manufacturer of the camera. Used only if this not available within image EXIF metadata
 - `--model`: Model name of the camera. Used only if this is not available within image EXIF metadata
-- `--focal_length`: Focal length (in mm) of the camera. Used only if this is not available within image EXIF metadata
 - `--drone_comment`: Human-readable text for the comment field for your drone model. Entirely optional.
+- `--focal_length`: Focal length (in mm) of the camera. Required only if this value is not available within image EXIF metadata
 
 ### Command Line Syntax
+
+
+
+#### For U.S. Sized 36"x48" 9row 12col checkerboard poster:
 ```bash
 python3 camera-calibration.py --image_dir path/to/images --square_size 100 --num_rows 9 --num_cols 12
 ```
 
-Alternatively, if you do not specify the `--image_dir`, the script will use the current working directory:
+#### For International ISO AO 8row 11col checkerboard poster:
 ```bash
-python3 camera-calibration.py --square_size 100 --num_rows 9 --num_cols 12
+python3 camera-calibration.py --image_dir path/to/images --square_size 100 --num_rows 8 --num_cols 11
 ```
+
+
+
+Make sure to use values for `square_size`, `num_rows`, and `num_cols` that match your poster size. If you generate a custom poster using [calib.io](https://calib.io/pages/camera-calibration-pattern-generator), make sure to update these values to match with your print size.
 
 ## Important Notes
 - **Square Size**: Input the size of the physical chessboard squares in millimeters. Results will be inacurate if the true square size is different.
@@ -145,7 +163,7 @@ python3 camera-calibration.py --square_size 100 --num_rows 9 --num_cols 12
 ## Output
 The script outputs the camera matrix and distortion coefficients to:
 - Standard output as text in the terminal.
-- A file of the name makeMODEL.json, where the camera make and model name are obtained from image EXIF metadata
+- A file of the name makeMODEL.json, where the camera make and model name are obtained from image EXIF metadata (or typed in by the user if absent from EXIF metadata)
 
 Both are formatted as a json entry in the same format used in the [droneModels.json](https://github.com/Theta-Limited/DroneModels) database.
 
@@ -179,4 +197,4 @@ E.g: here is what the ouptut json looks like for a DJI Mini 3 Pro:
 
 ### Legal:
 
-By making such a contribution of your drone's calibration data, you accept to the terms of Theta's [Contributor License Agreement](https://github.com/Theta-Limited/Contributor-License-Agreement)
+By making a contribution of your drone's calibration data as described above, you accept and agree to the terms of Theta's [Contributor License Agreement](https://github.com/Theta-Limited/Contributor-License-Agreement).
