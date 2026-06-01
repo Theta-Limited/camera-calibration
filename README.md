@@ -3,11 +3,11 @@
 ## Overview
 The Python script [`camera-calibration.py`](./camera-calibration.py) performs drone camera calibration using pictures of a black and white  chessboard poster. It computes the camera's intrinsics matrix and lens distortion coefficients, which are essential parameters for OpenAthena to correctly calculate pitch (up and down) and yaw (left and right) angle off from center for any arbitrary pixel within a drone image. The script then outputs the calibration data as an entry in [json](https://en.wikipedia.org/wiki/JSON) format suitable for inclusion in [OpenAthena's](https://github.com/Theta-Limited) [droneModels.json](https://github.com/Theta-Limited/DroneModels) calibration database.
 
-This script does not yet support and will not work correctly for [fisheye camera lenses](https://en.wikipedia.org/wiki/Fisheye_lens).
+The script supports both `perspective` and `fisheye` lens calibration. `perspective` calibration uses OpenCV's standard camera model and is known to be accurate. `fisheye` calibration is **experimental**.
 
 Included in this repository is are PDF files which can be used to print a chessboard calibration pattern poster.
 
-* [36in_x_48in_9row_12col_100mm_cv_poster.pdf](./36in_x_48in_9row_12col_100mm_cv_poster.pdf), is sized to print on an U.S. standard 36" x 48" poster. 
+* [36in_x_48in_9row_12col_100mm_cv_poster.pdf](./36in_x_48in_9row_12col_100mm_cv_poster.pdf), is sized to print on an U.S. standard 36" x 48" poster.
 * [ISO_A0_841mm_x_1189mm_8row_11col_100mm_squares.pdf](./ISO_A0_841mm_x_1189mm_8row_11col_100mm_squares.pdf) is sized to print on  international ISO A0 sized poster
 
 You may also generate a pattern of any other size using this webpage:
@@ -115,7 +115,7 @@ From the terminal (PowerShell on Windows, Terminal app on MacOS and Linux):
 cd camera-calibration
 python3 -m venv camera-calibration-venv # may just be 'python' on some systems
 source camera-calibration-venv/bin/activate
-pip install -r requirements.txt 
+pip install -r requirements.txt
 ```
 
 ## Usage
@@ -135,6 +135,7 @@ The following arguments are optional and may not be needed in most cases:
 - `--make`: Name of the manufacturer of the camera. Used only if this not available within image EXIF metadata
 - `--model`: Model name of the camera. Used only if this is not available within image EXIF metadata
 - `--drone_comment`: Human-readable text for the comment field for your drone model. Entirely optional.
+- `--lens_type`: Lens model to calibrate. Use `perspective` or `fisheye`. Defaults to `perspective`.
 - `--focal_length`: Focal length (in mm) of the camera. Required only if this value is not available within image EXIF metadata
 
 ### Command Line Syntax
@@ -143,12 +144,17 @@ The following arguments are optional and may not be needed in most cases:
 
 #### For U.S. Sized 36"x48" 9row 12col checkerboard poster:
 ```bash
-python3 camera-calibration.py --image_dir path/to/images --square_size 100 --num_rows 9 --num_cols 12
+python3 camera-calibration.py --lens_type perspective --image_dir path/to/images --square_size 100 --num_rows 9 --num_cols 12
 ```
 
 #### For International ISO AO 8row 11col checkerboard poster:
 ```bash
-python3 camera-calibration.py --image_dir path/to/images --square_size 100 --num_rows 8 --num_cols 11
+python3 camera-calibration.py --lens_type perspective --image_dir path/to/images --square_size 100 --num_rows 8 --num_cols 11
+```
+
+#### For a fisheye lens:
+```bash
+python3 camera-calibration.py --lens_type fisheye --image_dir path/to/images --square_size 100 --num_rows 9 --num_cols 12
 ```
 
 
@@ -183,6 +189,28 @@ E.g: here is what the ouptut json looks like for a DJI Mini 3 Pro:
       "radialR3": 0.22906477778853437,
       "tangentialT1": -0.004601610146546272,
       "tangentialT2": 0.0026292475166887
+    }
+```
+
+For `fisheye` lens calibration, the JSON uses the fisheye fields expected by DroneModels:
+```JSON
+    {
+      "makeModel": "exampleFISHEYE",
+      "isThermal": false,
+      "ccdWidthMMPerPixel": "0.0015/1.0",
+      "ccdHeightMMPerPixel": "0.0015/1.0",
+      "widthPixels": 4000,
+      "heightPixels": 3000,
+      "lensType": "fisheye",
+      "poly0": 0.0,
+      "poly1": 1.0,
+      "poly2": -0.00643155,
+      "poly3": -0.127019,
+      "poly4": -0.017398,
+      "c": 3853.0,
+      "d": 0.0,
+      "e": 0.0,
+      "f": 3853.0
     }
 ```
 
