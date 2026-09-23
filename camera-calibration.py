@@ -14,6 +14,8 @@ from PIL.ExifTags import TAGS
 LENS_TYPE_PERSPECTIVE = "perspective"
 LENS_TYPE_FISHEYE = "fisheye"
 LENS_TYPES = (LENS_TYPE_PERSPECTIVE, LENS_TYPE_FISHEYE)
+FISHEYE_PARAMETER_KEYS = ("poly0", "poly1", "poly2", "poly3", "poly4",
+                          "c", "d", "e", "f", "centerX", "centerY")
 
 
 def get_exif_data(image_path):
@@ -150,7 +152,9 @@ def collect_calibration_points(args):
 
     for idx, image_path in enumerate(image_paths):
         print(f"Processing image {idx + 1}/{len(image_paths)}: {os.path.basename(image_path)}")
-        img = cv2.imread(image_path)
+        # OpenAthena selects pixels in the raw raster, before EXIF orientation
+        # is applied for display. Calibrate in that same coordinate system.
+        img = cv2.imread(image_path, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
         if img is None:
             continue
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -166,6 +170,10 @@ def collect_calibration_points(args):
         elif image_size is None:
             height_pixels, width_pixels = gray.shape[:2]
             image_size = gray.shape[::-1]
+
+        if gray.shape[::-1] != image_size:
+            raise ValueError(f"Calibration images must have the same raw pixel dimensions: "
+                             f"{image_path} is {gray.shape[::-1]}, expected {image_size}")
 
         ret, corners = cv2.findChessboardCorners(gray, (cols, rows), None)
         if ret:
@@ -213,74 +221,204 @@ def calibrate_fisheye_camera(objpoints, imgpoints, image_size):
     )
 
 
+def _validate_fisheye_calibration(mtx, dist, width_pixels, height_pixels):
+    matrix = np.asarray(mtx, dtype=np.float64)
+    distortion = np.asarray(dist, dtype=np.float64).ravel()
+    if matrix.shape != (3, 3) or not np.all(np.isfinite(matrix)):
+        raise ValueError("Fisheye camera matrix must be a finite 3-by-3 matrix")
+    if (matrix[0, 0] <= 0 or matrix[1, 1] <= 0 or matrix[1, 0] != 0
+            or not np.array_equal(matrix[2], [0.0, 0.0, 1.0])):
+        raise ValueError("Expected an OpenCV intrinsic matrix with positive focal scales")
+    if distortion.size != 4 or not np.all(np.isfinite(distortion)):
+        raise ValueError("OpenCV fisheye calibration requires exactly four finite coefficients")
+    for size in (width_pixels, height_pixels):
+        if not np.isfinite(size) or size <= 0 or int(size) != size:
+            raise ValueError("Calibration image dimensions must be positive integers")
+    affine = matrix[:2, :2]
+    normalized = affine / np.max(np.abs(affine))
+    if abs(np.linalg.det(normalized)) <= 1e-14:
+        raise ValueError("Fisheye affine matrix is singular or ill-conditioned")
+    return matrix, distortion
+
+
+def _opencv_fisheye_radius(theta, distortion):
+    return theta * (1.0 + theta**2 * np.polynomial.polynomial.polyval(theta**2, distortion))
+
+
+def _real_roots_in_interval(coefficients, upper):
+    roots = np.polynomial.polynomial.polyroots(coefficients)
+    return sorted(float(root.real) for root in roots
+                  if abs(root.imag) <= 1e-10 * max(1.0, abs(root.real))
+                  and 0.0 < root.real < upper)
+
+
+def _opencv_fisheye_branch_limit(distortion):
+    # theta_d'(theta) is a quartic in z=theta^2. Its extrema partition
+    # that quartic into monotone intervals, so even a narrow fold is detected.
+    derivative = np.concatenate(([1.0], distortion * [3.0, 5.0, 7.0, 9.0]))
+    limit_squared = (np.pi / 2.0)**2
+    critical = _real_roots_in_interval(
+        np.polynomial.polynomial.polyder(derivative), limit_squared
+    )
+    lower = 0.0
+    for upper in critical + [limit_squared]:
+        if np.polynomial.polynomial.polyval(upper, derivative) <= 0.0:
+            for _ in range(80):
+                middle = (lower + upper) / 2.0
+                if np.polynomial.polynomial.polyval(middle, derivative) > 0.0:
+                    lower = middle
+                else:
+                    upper = middle
+            return float(np.sqrt((lower + upper) / 2.0))
+        lower = upper
+    return np.pi / 2.0
+
+
+def _fisheye_corner_radius(matrix, width_pixels, height_pixels):
+    corners = np.array([[0.0, 0.0], [width_pixels - 1.0, 0.0],
+                        [0.0, height_pixels - 1.0],
+                        [width_pixels - 1.0, height_pixels - 1.0]])
+    normalized = np.linalg.solve(matrix[:2, :2], (corners - matrix[:2, 2]).T)
+    radius = float(np.max(np.hypot(normalized[0], normalized[1])))
+    if not np.isfinite(radius) or radius <= 0.0:
+        raise ValueError("Image does not define a finite, nonzero fisheye fitting range")
+    return radius
+
+
 def estimate_fisheye_theta_max(mtx, dist, width_pixels, height_pixels):
-    points = np.array(
-        [
-            [0.0, 0.0],
-            [width_pixels - 1.0, 0.0],
-            [0.0, height_pixels - 1.0],
-            [width_pixels - 1.0, height_pixels - 1.0],
-            [width_pixels / 2.0, 0.0],
-            [width_pixels / 2.0, height_pixels - 1.0],
-            [0.0, height_pixels / 2.0],
-            [width_pixels - 1.0, height_pixels / 2.0],
-        ],
-        dtype=np.float64,
-    ).reshape(-1, 1, 2)
+    """Estimate the raster's supported off-axis angle in radians, at most pi/2.
 
-    try:
-        undistorted = cv2.fisheye.undistortPoints(points, mtx, dist)
-        radii = np.linalg.norm(undistorted.reshape(-1, 2), axis=1)
-        theta_values = np.arctan(radii)
-        theta_max = float(np.nanmax(theta_values))
-    except cv2.error:
-        fx = float(mtx[0, 0])
-        fy = float(mtx[1, 1])
-        cx = float(mtx[0, 2])
-        cy = float(mtx[1, 2])
-        normalized = np.array(
-            [[(x - cx) / fx, (y - cy) / fy] for x, y in points.reshape(-1, 2)],
-            dtype=np.float64,
-        )
-        theta_max = float(np.arctan(np.max(np.linalg.norm(normalized, axis=1))))
+    Invert the full OpenCV affine transform (including skew), then the radial
+    polynomial. undistortPoints is unsuitable here: it can clamp large radii
+    or return failure sentinels that look like valid angles after atan().
+    """
+    matrix, distortion = _validate_fisheye_calibration(mtx, dist, width_pixels, height_pixels)
+    radius = _fisheye_corner_radius(matrix, width_pixels, height_pixels)
+    upper = _opencv_fisheye_branch_limit(distortion)
+    maximum_radius = _opencv_fisheye_radius(upper, distortion)
+    if not np.isfinite(maximum_radius) or maximum_radius <= 0.0:
+        raise ValueError("OpenCV fisheye polynomial has no usable increasing branch")
+    if radius >= maximum_radius:
+        if upper < np.pi / 2.0:
+            raise ValueError("OpenCV fisheye radial slope reaches zero before covering the image; "
+                             "check the calibration for a stationary point or fold")
+        # A circular fisheye image can have raster corners outside its supported
+        # front hemisphere. Do not extrapolate the polynomial behind the camera.
+        return upper
+    lower = 0.0
+    for _ in range(80):
+        middle = (lower + upper) / 2.0
+        if _opencv_fisheye_radius(middle, distortion) < radius:
+            lower = middle
+        else:
+            upper = middle
+    return (lower + upper) / 2.0
 
-    if not np.isfinite(theta_max) or theta_max <= 0:
-        theta_max = np.pi / 2.0
 
-    return min(theta_max, np.pi * 0.99)
+def _validate_pix4d_polynomial(parameters, q_max):
+    coefficients = [parameters[f"poly{i}"] for i in range(5)]
+    derivative = np.polynomial.polynomial.polyder(coefficients)
+    critical = _real_roots_in_interval(np.polynomial.polynomial.polyder(derivative), q_max)
+    slopes = np.polynomial.polynomial.polyval([0.0, *critical, q_max], derivative)
+    if not np.all(np.isfinite(slopes)) or np.min(slopes) <= 0.0:
+        raise ValueError("Fitted PIX4D polynomial is not strictly increasing over the fitting range; "
+                         "a quartic cannot safely represent this calibration")
 
 
 def convert_opencv_fisheye_to_dronemodels(mtx, dist, width_pixels, height_pixels):
-    k1, k2, k3, k4 = get_distortion_coefficients(dist, 4)
-    theta_max = estimate_fisheye_theta_max(mtx, dist, width_pixels, height_pixels)
-    theta = np.linspace(theta_max / 200.0, theta_max, 200)
+    """Fit a PIX4D normalized-angle quartic to the OpenCV fisheye projection.
 
-    # OpenCV fisheye uses theta_d = theta * (1 + k1*theta^2 + ... + k4*theta^8).
-    # DroneModels/Pix4D stores a normalized quartic polynomial where poly1 is 1.
-    theta_distorted = theta * (
-        1.0
-        + k1 * theta**2
-        + k2 * theta**4
-        + k3 * theta**6
-        + k4 * theta**8
-    )
-    fit_matrix = np.column_stack((theta**2, theta**3, theta**4))
-    poly2, poly3, poly4 = np.linalg.lstsq(
-        fit_matrix,
-        theta_distorted - theta,
-        rcond=None,
-    )[0]
+    PIX4D q = 2*theta/pi, rho = theta_d/pi*2, and A = (pi/2)*K[:2,:2].
+    The quartic matches the source radius at the fitting endpoint to preserve
+    coverage, particularly at the 90-degree front-hemisphere boundary.
+    """
+    matrix, distortion = _validate_fisheye_calibration(mtx, dist, width_pixels, height_pixels)
+    theta_max = estimate_fisheye_theta_max(matrix, distortion, width_pixels, height_pixels)
+    scale = np.pi / 2.0
+    q_max = theta_max / scale
+    if np.all(distortion[1:] == 0.0):
+        # This submodel has an exact cubic representation; avoid injecting
+        # least-squares roundoff into coefficients that are exactly zero.
+        poly2, poly3, poly4 = 0.0, distortion[0] * scale**2, 0.0
+    else:
+        # Work in t=q/q_max to keep the least-squares system well scaled even
+        # for a narrow field of view. Form rho-q directly to avoid cancellation.
+        t = np.linspace(1.0 / 200.0, 1.0, 200)
+        theta = theta_max * t
+        q = q_max * t
+        radial_delta = q * theta**2 * np.polynomial.polynomial.polyval(theta**2, distortion)
+        endpoint_delta = radial_delta[-1]
+        fit_matrix = np.column_stack((t**2 - t**4, t**3 - t**4))
+        a2, a3 = np.linalg.lstsq(fit_matrix, radial_delta - endpoint_delta * t**4, rcond=None)[0]
+        a4 = endpoint_delta - a2 - a3
+        poly2, poly3, poly4 = a2 / q_max**2, a3 / q_max**3, a4 / q_max**4
 
+    # Keep full float precision. Fixed decimal rounding can erase small
+    # coefficients and change invertibility near a stationary point.
+    parameters = {
+        "poly0": 0.0,
+        "poly1": 1.0,
+        "poly2": float(poly2),
+        "poly3": float(poly3),
+        "poly4": float(poly4),
+        "c": float(scale * matrix[0, 0]),
+        "d": float(scale * matrix[0, 1]),
+        "e": float(scale * matrix[1, 0]),
+        "f": float(scale * matrix[1, 1]),
+        "centerX": float(matrix[0, 2]),
+        "centerY": float(matrix[1, 2]),
+    }
+    if not all(np.isfinite(value) for value in parameters.values()):
+        raise ValueError("Non-finite PIX4D parameters after conversion")
+    _validate_pix4d_polynomial(parameters, q_max)
+    return parameters
+
+
+def fisheye_conversion_diagnostics(mtx, dist, width_pixels, height_pixels, params=None):
+    """Measure model-conversion error separately from checkerboard calibration RMS.
+
+    Pixel errors are conservative bounds over image-circle azimuth: radial
+    error times the largest singular value of the PIX4D affine matrix.
+    Angular errors compare independently sampled source rays with the inverse
+    of the exported quartic. Neither measures error against real-world truth.
+    """
+    matrix, distortion = _validate_fisheye_calibration(mtx, dist, width_pixels, height_pixels)
+    if params is None:
+        params = convert_opencv_fisheye_to_dronemodels(matrix, distortion, width_pixels, height_pixels)
+    theta_max = estimate_fisheye_theta_max(matrix, distortion, width_pixels, height_pixels)
+    scale = np.pi / 2.0
+    q_max = theta_max / scale
+    _validate_pix4d_polynomial(params, q_max)
+    coefficients = [params[f"poly{i}"] for i in range(5)]
+    theta = np.linspace(0.0, theta_max, 4097)
+    q = theta / scale
+    source_radius = _opencv_fisheye_radius(theta, distortion) / scale
+    fitted_radius = np.polynomial.polynomial.polyval(q, coefficients)
+    affine = np.array([[params["c"], params["d"]], [params["e"], params["f"]]])
+    pixel_errors = np.abs(fitted_radius - source_radius) * np.linalg.svd(affine, compute_uv=False)[0]
+
+    # The endpoint constraint supplies a bracket for every source sample.
+    tolerance = 32.0 * np.spacing(max(source_radius[-1], fitted_radius[-1]))
+    if source_radius[-1] > fitted_radius[-1] + tolerance:
+        raise ValueError("PIX4D polynomial does not cover the source fitting range")
+    lower = np.zeros_like(q)
+    upper = np.full_like(q, q_max)
+    for _ in range(60):
+        middle = (lower + upper) / 2.0
+        below = np.polynomial.polynomial.polyval(middle, coefficients) < source_radius
+        lower = np.where(below, middle, lower)
+        upper = np.where(below, upper, middle)
+    angle_errors = np.degrees(np.abs((lower + upper) / 2.0 * scale - theta))
+    corner_radius = _fisheye_corner_radius(matrix, width_pixels, height_pixels)
+    source_limit = _opencv_fisheye_radius(theta_max, distortion)
     return {
-        "poly0": get_float(0.0),
-        "poly1": get_float(1.0),
-        "poly2": get_float(poly2),
-        "poly3": get_float(poly3),
-        "poly4": get_float(poly4),
-        "c": get_float(mtx[0, 0]),
-        "d": get_float(mtx[0, 1]),
-        "e": get_float(mtx[1, 0]),
-        "f": get_float(mtx[1, 1]),
+        "fit_max_angle_deg": float(np.degrees(theta_max)),
+        "max_pixel_error_bound": float(np.max(pixel_errors)),
+        "rms_pixel_error_bound": float(np.sqrt(np.mean(pixel_errors**2))),
+        "max_ray_error_deg": float(np.max(angle_errors)),
+        "rms_ray_error_deg": float(np.sqrt(np.mean(angle_errors**2))),
+        "image_corners_within_fit": bool(corner_radius <= source_limit + 32.0 * np.spacing(source_limit)),
+        "sample_count": int(theta.size),
     }
 
 
@@ -334,14 +472,19 @@ def format_as_dronemodels_json(
     return json.dumps(calibration_data, indent=4)
 
 
-def write_calibration_files(lens_type, reprojection_error, mtx, dist, dronemodels_params=None):
-    np.savez(
-        "calibration_data.npz",
+def write_calibration_files(lens_type, reprojection_error, mtx, dist,
+                            dronemodels_params=None, conversion_diagnostics=None):
+    archive = dict(
         lens_type=lens_type,
         reprojection_error=reprojection_error,
         matrix=mtx,
         distortion=dist,
     )
+    if dronemodels_params is not None:
+        archive.update({f"dronemodels_{key}": value for key, value in dronemodels_params.items()})
+    if conversion_diagnostics is not None:
+        archive.update({f"fisheye_{key}": value for key, value in conversion_diagnostics.items()})
+    np.savez("calibration_data.npz", **archive)
 
     with open("calibration_data.csv", "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
@@ -353,17 +496,26 @@ def write_calibration_files(lens_type, reprojection_error, mtx, dist, dronemodel
         writer.writerow(dist.ravel())
         if dronemodels_params:
             writer.writerow(["DroneModels Fisheye Parameters"])
-            for key in ("poly0", "poly1", "poly2", "poly3", "poly4", "c", "d", "e", "f"):
+            for key in FISHEYE_PARAMETER_KEYS:
                 writer.writerow([key, dronemodels_params[key]])
+        if conversion_diagnostics:
+            writer.writerow(["PIX4D Conversion Diagnostics (separate from calibration RMS)"])
+            writer.writerows(conversion_diagnostics.items())
 
     print(f"Lens Type: {lens_type}")
-    print("Reprojection Error:\n", reprojection_error)
+    print("OpenCV calibration RMS reprojection error (pixels):\n", reprojection_error)
     print("Camera Matrix:\n", mtx)
     print("\nOpenCV Distortion Coefficients:\n", dist.ravel())
     if dronemodels_params:
         print("\nDroneModels Fisheye Parameters:")
-        for key in ("poly0", "poly1", "poly2", "poly3", "poly4", "c", "d", "e", "f"):
+        for key in FISHEYE_PARAMETER_KEYS:
             print(f"{key}: {dronemodels_params[key]}")
+    if conversion_diagnostics:
+        print("\nPIX4D conversion diagnostics (separate from calibration RMS):")
+        for key, value in conversion_diagnostics.items():
+            print(f"{key}: {value}")
+        if not conversion_diagnostics["image_corners_within_fit"]:
+            print("Raster corners extend outside the supported 90-degree off-axis range.")
 
 
 def calibrate_camera(args):
@@ -378,6 +530,7 @@ def calibrate_camera(args):
         height_pixels,
     ) = collect_calibration_points(args)
 
+    conversion_diagnostics = None
     if args.lens_type == LENS_TYPE_PERSPECTIVE:
         ret, mtx, dist, rvecs, tvecs = calibrate_perspective_camera(objpoints, imgpoints, image_size)
         dronemodels_params = None
@@ -389,8 +542,11 @@ def calibrate_camera(args):
             width_pixels,
             height_pixels,
         )
+        conversion_diagnostics = fisheye_conversion_diagnostics(
+            mtx, dist, width_pixels, height_pixels, dronemodels_params
+        )
 
-    write_calibration_files(args.lens_type, ret, mtx, dist, dronemodels_params)
+    write_calibration_files(args.lens_type, ret, mtx, dist, dronemodels_params, conversion_diagnostics)
 
     return focal_length, make, model, mtx, dist, width_pixels, height_pixels
 
@@ -479,7 +635,10 @@ if __name__ == "__main__":
     if not drone_comment:
         drone_comment = input("Enter human-readable text for the comment field for your drone model (leave blank to omit): ")
 
-    focal_length, make, model, mtx, dist, width_pixels, height_pixels = calibrate_camera(args)
+    try:
+        focal_length, make, model, mtx, dist, width_pixels, height_pixels = calibrate_camera(args)
+    except (ValueError, cv2.error) as error:
+        sys.exit(f"FATAL ERROR: calibration could not be exported: {error}")
 
     calibration_json_data = format_as_dronemodels_json(
         focal_length,

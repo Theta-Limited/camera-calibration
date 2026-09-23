@@ -94,6 +94,7 @@ The number of calibration images you use and the way you take them are crucial f
 
 ### Post-processing the Images
 - **Check for Clarity**: Before running the calibration, visually inspect the images to ensure that the chessboard and black square corners are clear, distinguishable, and un-obstructed. Delete images that don't meet these standards.
+- **Keep the originals**: Use photos with the same image dimensions and camera settings. Do not crop, resize, rotate, or apply lens correction before calibration. The script will stop if image dimensions differ.
 
 ## Installation
 
@@ -167,13 +168,16 @@ Make sure to use values for `square_size`, `num_rows`, and `num_cols` that match
 - **Chessboard Pattern**: Ensure that the entire chessboard is visible in the calibration images, taken from various angles and distances.
 
 ## Output
-The script outputs the camera matrix and distortion coefficients to:
-- Standard output as text in the terminal.
-- A file of the name makeMODEL.json, where the camera make and model name are obtained from image EXIF metadata (or typed in by the user if absent from EXIF metadata)
 
-Both are formatted as a json entry in the same format used in the [droneModels.json](https://github.com/Theta-Limited/DroneModels) database.
+The script prints the results in the terminal and saves three files in the folder where you run it:
 
-E.g: here is what the ouptut json looks like for a DJI Mini 3 Pro:
+- `makeMODEL.json`: your camera's entry for the [droneModels.json](https://github.com/Theta-Limited/DroneModels) database. The filename uses the camera make and model from the photos or your input.
+- `calibration_data.csv`: results and error figures that you can open in a spreadsheet.
+- `calibration_data.npz`: a saved copy of the original calibration for future checks or updates.
+
+Keep all three files together, and save them elsewhere before another run replaces files with the same names.
+
+E.g: here is what the output JSON looks like for a DJI Mini 3 Pro:
 ```JSON
     {
       "makeModel": "djiFC3582",
@@ -192,7 +196,8 @@ E.g: here is what the ouptut json looks like for a DJI Mini 3 Pro:
     }
 ```
 
-For `fisheye` lens calibration, the JSON uses the fisheye fields expected by DroneModels:
+For `fisheye` lens calibration, the JSON uses the fisheye fields expected by DroneModels. This example is for illustration; use the values generated for your own camera:
+
 ```JSON
     {
       "makeModel": "exampleFISHEYE",
@@ -204,15 +209,25 @@ For `fisheye` lens calibration, the JSON uses the fisheye fields expected by Dro
       "lensType": "fisheye",
       "poly0": 0.0,
       "poly1": 1.0,
-      "poly2": -0.00643155,
-      "poly3": -0.127019,
-      "poly4": -0.017398,
-      "c": 3853.0,
+      "poly2": 0.0,
+      "poly3": 0.0,
+      "poly4": 0.0,
+      "c": 3141.592653589793,
       "d": 0.0,
       "e": 0.0,
-      "f": 3853.0
+      "f": 3141.592653589793,
+      "centerX": 1990.0,
+      "centerY": 1510.0
     }
 ```
+
+### Fisheye calibration notes
+
+- `centerX` and `centerY` describe where the lens is centered in the image, which may differ slightly from the middle pixel. The tool fills these in automatically. They are optional in OpenAthena, but keeping them preserves the calibration.
+- The results include a separate **conversion error** for preparing the calibration for OpenAthena. Lower errors are better, but check a new calibration against known locations before relying on it. If the tool reports unsupported image corners, avoid using those areas.
+- Fisheye exports from older versions of this script need to be regenerated for the corrected OpenAthena fisheye model. You can reuse saved calibration data; see the [update instructions](./CALIBRATION_DETAILS.md#updating-files-from-older-versions-of-this-script).
+
+Equations, detailed error descriptions, and developer instructions are in the optional [technical reference](./CALIBRATION_DETAILS.md).
 
 ## Contributing your calibration to OpenAthena
 
